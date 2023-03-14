@@ -20,9 +20,12 @@ pub extern "C" fn _start() -> ! {
     println!("{}", LOGO);
     println!("Welcome to yavko's WASM based tiny OS!");
 
+    yos::init();
+
     #[cfg(test)]
     test_main();
-    panic!("Nothing else to run");
+    //panic!("Nothing else to run");
+    yos::hlt_loop();
 }
 
 /// This function is called on panic.
@@ -30,7 +33,7 @@ pub extern "C" fn _start() -> ! {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
-    loop {}
+    yos::hlt_loop();
 }
 
 #[cfg(test)]
