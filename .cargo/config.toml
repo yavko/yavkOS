@@ -6,4 +6,4 @@ runner = "bootimage runner"
 
 [unstable]
 build-std-features = ["compiler-builtins-mem"]
-build-std = ["core", "compiler_builtins"]
+build-std = ["core", "compiler_builtins", "alloc"]

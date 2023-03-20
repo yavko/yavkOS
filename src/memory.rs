@@ -1,3 +1,4 @@
+use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use x86_64::{
     structures::paging::{
         FrameAllocator, Mapper, OffsetPageTable, Page, PageTable, PhysFrame, Size4KiB,
@@ -5,12 +6,47 @@ use x86_64::{
     PhysAddr, VirtAddr,
 };
 
-/// A [FrameAllocator] that always returns [None]
-pub struct EmptyFrameAllocator;
+/// A [FrameAllocator] that returns usable frames from the bootloadeer's memory map
+pub struct BootInfoFrameAllocator {
+    memory_map: &'static MemoryMap,
+    next: usize,
+}
 
-unsafe impl FrameAllocator<Size4KiB> for EmptyFrameAllocator {
+impl BootInfoFrameAllocator {
+    /// Create a FrameAllocator from the passed memory map.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because the caller must guarantee that the passed
+    /// memory map is valid. The main requirement is that all frames that are marked
+    /// as `USABLE` in it are really unused.
+    pub unsafe fn init(memory_map: &'static MemoryMap) -> Self {
+        BootInfoFrameAllocator {
+            memory_map,
+            next: 0,
+        }
+    }
+    /// Returns an iterator of usable frames
+    fn usable_frames(&self) -> impl Iterator<Item = PhysFrame> {
+        // get usable regions from memory map
+        let regions = self.memory_map.iter();
+        let usable_regions =
+            regions.filter(|region| region.region_type == MemoryRegionType::Usable);
+        // map each region to its address range
+        let addr_ranges =
+            usable_regions.map(|region| region.range.start_addr()..region.range.end_addr());
+        // transform to an iterator of frame start addresses
+        let frame_addresses = addr_ranges.flat_map(|r| r.step_by(4096));
+        // create [PhysFrame] types from the start addresses
+        frame_addresses.map(|addr| PhysFrame::containing_address(PhysAddr::new(addr)))
+    }
+}
+
+unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
     fn allocate_frame(&mut self) -> Option<PhysFrame> {
-        None
+        let frame = self.usable_frames().nth(self.next);
+        self.next += 1;
+        frame
     }
 }
 
@@ -43,22 +79,4 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut
 pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static> {
     let level_4_table = active_level_4_table(physical_memory_offset);
     OffsetPageTable::new(level_4_table, physical_memory_offset)
-}
-
-/// creates an example mapping
-pub fn create_example_mapping(
-    page: Page,
-    mapper: &mut OffsetPageTable,
-    frame_allocator: &mut impl FrameAllocator<Size4KiB>,
-) {
-    use x86_64::structures::paging::PageTableFlags as Flags;
-
-    let frame = PhysFrame::containing_address(PhysAddr::new(0xb8000));
-    let flags = Flags::PRESENT | Flags::WRITABLE;
-
-    let map_to_result = unsafe {
-        // FIXME: this is not safe, we do it only for testing
-        mapper.map_to(page, frame, flags, frame_allocator)
-    };
-    map_to_result.expect("map_to failed").flush();
 }

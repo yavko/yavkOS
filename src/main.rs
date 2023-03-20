@@ -3,9 +3,10 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(yos::test_runner)]
 #![reexport_test_harness_main = "test_main"]
+extern crate alloc;
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
-use yos::println;
+use yos::{print, println};
 
 static LOGO: &str = r"
                    _     ___  ____  
@@ -18,32 +19,19 @@ static LOGO: &str = r"
 
 entry_point!(kernel_main);
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
-    use x86_64::{structures::paging::Translate, VirtAddr};
-    use yos::memory;
+    use x86_64::VirtAddr;
+    use yos::allocator;
+    use yos::memory::{self, BootInfoFrameAllocator};
     println!("{}", LOGO);
     println!("Welcome to yavko's WASM based tiny OS!");
 
     yos::init();
 
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
-    let mapper = unsafe { memory::init(phys_mem_offset) };
+    let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
 
-    let addresses = [
-        // the identity-mapped vga buffer page
-        0xb8000,
-        // some code page
-        0x201008,
-        // some stack page
-        0x0100_0020_1a10,
-        // virtual address mapped to physical address 0
-        boot_info.physical_memory_offset,
-    ];
-
-    for &address in &addresses {
-        let virt = VirtAddr::new(address);
-        let phys = mapper.translate_addr(virt);
-        println!("{:?} -> {:?}", virt, phys);
-    }
+    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap init failed!");
 
     #[cfg(test)]
     test_main();

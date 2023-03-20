@@ -21,10 +21,19 @@ harness = false
 
 [dependencies]
 bootloader = { version = "0.9.23", features = ["map_physical_memory"]}
-volatile = "0.2.6"
+volatile = "0.2.7"
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
 spin = "0.5.2"
-x86_64 = "0.14.2"
-uart_16550 = "0.2.0"
-pic8259 = "0.10.1"
-pc-keyboard = "0.5.0"
+x86_64 = "0.14.10"
+uart_16550 = "0.2.18"
+pic8259 = "0.10.3"
+pc-keyboard = "0.5.1"
+linked_list_allocator = { version = "0.9.1", optional = true }
+good_memory_allocator = { version = "0.1.7", optional = true }
+
+
+[features]
+default = [ "alloc-lla", "alloc-bump", "alloc-galloc" ]
+alloc-lla = ["dep:linked_list_allocator"]
+alloc-bump = []
+alloc-galloc = [ "dep:good_memory_allocator" ]
