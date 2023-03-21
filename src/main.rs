@@ -22,6 +22,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     use x86_64::VirtAddr;
     use yos::allocator;
     use yos::memory::{self, BootInfoFrameAllocator};
+    use yos::task::{executor::Executor, keyboard, Task};
     println!("{}", LOGO);
     println!("Welcome to yavko's WASM based tiny OS!");
 
@@ -35,7 +36,10 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 
     #[cfg(test)]
     test_main();
-    yos::hlt_loop();
+
+    let mut executor = Executor::new();
+    executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.run();
 }
 
 /// This function is called on panic.

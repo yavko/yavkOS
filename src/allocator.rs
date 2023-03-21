@@ -13,7 +13,7 @@ pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
 #[cfg_attr(feature = "alloc-lla", global_allocator)]
 #[cfg(feature = "alloc-lla")]
 #[cfg(not(feature = "alloc-bump"))]
-static ALLOCATOR: LockedHeap = linked_list_allocator::LockedHeap::empty();
+static ALLOCATOR: linked_list_allocator::LockedHeap = linked_list_allocator::LockedHeap::empty();
 
 #[cfg_attr(feature = "alloc-bump", global_allocator)]
 #[cfg(feature = "alloc-bump")]
@@ -45,10 +45,14 @@ pub fn init_heap(
         unsafe { mapper.map_to(page, frame, flags, frame_allocator)?.flush() };
     }
     unsafe {
-        #[cfg(not(feature = "alloc-galloc"))]
+        #[cfg(feature = "alloc-bump")]
+        #[cfg(not(any(feature = "alloc-galloc", feature = "alloc-lla")))]
         ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
+        #[cfg(feature = "alloc-lla")]
+        #[cfg(not(any(feature = "alloc-galloc", feature = "alloc-bump")))]
+        ALLOCATOR.lock().init(HEAP_START as *mut u8, HEAP_SIZE);
         #[cfg(feature = "alloc-galloc")]
-        ALLOCATOR.init(HEAP_START, HEAP_SIZE);
+        ALLOCATOR.init(HEAP_START, HEAP_SIZE)
     }
     Ok(())
 }
