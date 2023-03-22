@@ -6,30 +6,31 @@ use crossbeam_queue::ArrayQueue;
 
 const MAX_TASKS: usize = 100;
 
-// #[derive(Clone)]
-// pub struct Spawner(Arc<ArrayQueue<Task>>);
-// impl Spawner {
-//     pub fn new(capacity: usize) -> Self {
-//         Self(Arc::new(ArrayQueue::new(capacity)))
-//     }
-//     pub fn add(&self, future: impl Future<Output = ()> + 'static) {
-//         let _ = self.0.push(Task::new(future));
-//     }
-// }
+#[derive(Clone)]
+#[repr(transparent)]
+pub struct Spawner(Arc<ArrayQueue<Task>>);
+impl Spawner {
+    pub fn new(capacity: usize) -> Self {
+        Self(Arc::new(ArrayQueue::new(capacity)))
+    }
+    pub fn add(&self, future: impl Future<Output = ()> + 'static) {
+        let _ = self.0.push(Task::new(future));
+    }
+}
 
 pub struct Executor {
     tasks: BTreeMap<TaskId, Task>,
     task_queue: Arc<ArrayQueue<TaskId>>,
-    //spawner: Spawner,
+    spawner: Spawner,
     waker_cache: BTreeMap<TaskId, Waker>,
 }
 
 impl Executor {
-    pub fn new() -> Self {
+    pub fn new(spawner: Spawner) -> Self {
         Self {
             tasks: BTreeMap::new(),
             task_queue: Arc::new(ArrayQueue::new(MAX_TASKS)),
-            //spawner: Spawner::new(MAX_TASKS),
+            spawner,
             waker_cache: BTreeMap::new(),
         }
     }
@@ -61,6 +62,7 @@ impl Executor {
             tasks,
             task_queue,
             waker_cache,
+            ..
         } = self;
 
         while let Some(task_id) = task_queue.pop() {

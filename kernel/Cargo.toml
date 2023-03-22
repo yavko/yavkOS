@@ -1,0 +1,40 @@
+[package]
+name = "kernel"
+version = "0.1.0"
+edition = "2021"
+
+[[test]]
+name = "should_panic"
+harness = false
+
+[[test]]
+name = "stack_overflow"
+harness = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bootloader_api = "0.11"
+volatile = "0.2.7"
+lazy_static = { version = "1.4", features = ["spin_no_std"] }
+spin = "0.9.6"
+x86_64 = "0.14.10"
+uart_16550 = "0.2.18"
+pic8259 = "0.10.3"
+pc-keyboard = "0.7.0"
+linked_list_allocator = { version = "0.10.5", optional = true }
+good_memory_allocator = { version = "0.1.7", optional = true }
+crossbeam-queue = { version = "0.3.8", default-features = false, features = ["alloc"] }
+conquer-once = { version = "0.3.2", default-features = false }
+futures-util = { version = "0.3.27", default-features = false, features = ["alloc"] }
+
+anyhow = { version = "1.0", default-features = false }
+
+# for wasm
+#wasmi = { version = "0.29", no-default-features = true }
+
+[features]
+default = [ "alloc-galloc" ]
+alloc-lla = ["dep:linked_list_allocator"]
+alloc-bump = []
+alloc-galloc = [ "dep:good_memory_allocator" ]

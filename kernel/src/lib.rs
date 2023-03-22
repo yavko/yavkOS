@@ -4,7 +4,8 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-use bootloader::{entry_point, BootInfo};
+use bootloader_api::config::{BootloaderConfig, Mapping};
+use bootloader_api::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 extern crate alloc;
 pub mod allocator;
@@ -80,12 +81,18 @@ fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
     panic!("allocation error: {layout:?}")
 }
 
+pub static BOOTLOADER_CONFIG: BootloaderConfig = {
+    let mut config = BootloaderConfig::new_default();
+    config.mappings.physical_memory = Some(Mapping::Dynamic);
+    config
+};
+
 #[cfg(test)]
-entry_point!(test_kernel_main);
+entry_point!(test_kernel_main, config = &BOOTLOADER_CONFIG);
 
 /// Entry point for `cargo test`
 #[cfg(test)]
-fn test_kernel_main(_boot_info: &'static BootInfo) -> ! {
+fn test_kernel_main(_boot_info: &'static mut BootInfo) -> ! {
     init();
     test_main();
     hlt_loop();
