@@ -1,6 +1,7 @@
 [package]
 name = "yos"         # or any other name
 version = "0.1.0"
+edition = "2021"
 
 [build-dependencies]
 bootloader = "0.11"
