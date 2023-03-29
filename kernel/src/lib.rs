@@ -4,17 +4,22 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-use bootloader_api::config::{BootloaderConfig, Mapping};
+use bootloader_api::{
+    config::{BootloaderConfig, Mapping},
+    info::FrameBufferInfo,
+};
 use bootloader_api::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 extern crate alloc;
 pub mod allocator;
+pub mod framebuffer;
 pub mod gdt;
 pub mod interrupts;
 pub mod memory;
+pub mod mouse;
 pub mod serial;
 pub mod task;
-pub mod vga_buffer;
+//pub mod vga_buffer;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
@@ -41,14 +46,14 @@ where
     T: Fn(),
 {
     fn run(&self) {
-        serial_print!("{}...\t", core::any::type_name::<T>());
+        print!("{}...\t", core::any::type_name::<T>());
         self();
-        serial_println!("[ok]");
+        println!("[ok]");
     }
 }
 
 pub fn test_runner(tests: &[&dyn Testable]) {
-    serial_println!("Running {} tests", tests.len());
+    println!("Running {} tests", tests.len());
     for test in tests {
         test.run();
     }
@@ -57,8 +62,8 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 
 #[allow(clippy::empty_loop)]
 pub fn test_panic_handler(info: &PanicInfo) -> ! {
-    serial_println!("[failed]\n");
-    serial_println!("Error: {}\n", info);
+    print!("[failed]\n");
+    print!("Error: {}\n", info);
     exit_qemu(QemuExitCode::Failed);
     hlt_loop();
 }
@@ -92,8 +97,22 @@ entry_point!(test_kernel_main, config = &BOOTLOADER_CONFIG);
 
 /// Entry point for `cargo test`
 #[cfg(test)]
-fn test_kernel_main(_boot_info: &'static mut BootInfo) -> ! {
+fn test_kernel_main(boot_info: &'static mut BootInfo) -> ! {
+    use crate::framebuffer::{FrameBufferWriter, FRAMEBUFFER};
     init();
+    FRAMEBUFFER.init_once(|| {
+        let frame = boot_info.framebuffer.as_mut();
+        let info = match frame {
+            Some(ref v) => v.info(),
+            None => panic!("BOOTLOADER NOT CONFIGURED TO SUPPORT FRAMEBUFFER"),
+        };
+        let buffer = match frame {
+            Some(v) => v.buffer_mut(),
+            None => panic!("BOOTLOADER NOT CONFIGURED TO SUPPORT FRAMEBUFFER"),
+        };
+        spinning_top::Spinlock::new(FrameBufferWriter::new(buffer, info))
+    });
+
     test_main();
     hlt_loop();
 }

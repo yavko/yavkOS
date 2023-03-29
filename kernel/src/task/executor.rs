@@ -34,7 +34,7 @@ impl Executor {
             waker_cache: BTreeMap::new(),
         }
     }
-    pub fn spawn(&mut self, task: Task) {
+    fn spawn(&mut self, task: Task) {
         let task_id = task.id;
         if self.tasks.insert(task.id, task).is_some() {
             panic!("Task with same ID already in task queue!!");
@@ -51,6 +51,9 @@ impl Executor {
         }
     }
     pub fn run(&mut self) -> ! {
+        while let Some(e) = self.spawner.0.pop() {
+            self.spawn(e);
+        }
         loop {
             self.run_ready_tasks();
             self.sleep_if_idle();

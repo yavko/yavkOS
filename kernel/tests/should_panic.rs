@@ -1,15 +1,30 @@
 #![no_std]
 #![no_main]
 
+use bootloader_api::{entry_point, BootInfo};
 use core::panic::PanicInfo;
-use yos::{exit_qemu, serial_print, serial_println, QemuExitCode};
+use kernel::{exit_qemu, serial_print, serial_println, QemuExitCode};
 
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
+entry_point!(kernel_main, config = &kernel::BOOTLOADER_CONFIG);
+fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
+    use kernel::framebuffer::{FrameBufferWriter, FRAMEBUFFER};
+    FRAMEBUFFER.init_once(|| {
+        let frame = boot_info.framebuffer.as_mut();
+        let info = match frame {
+            Some(ref v) => v.info(),
+            None => panic!("BOOTLOADER NOT CONFIGURED TO SUPPORT FRAMEBUFFER"),
+        };
+        let buffer = match frame {
+            Some(v) => v.buffer_mut(),
+            None => panic!("BOOTLOADER NOT CONFIGURED TO SUPPORT FRAMEBUFFER"),
+        };
+        spinning_top::Spinlock::new(FrameBufferWriter::new(buffer, info))
+    });
+
     should_fail();
     serial_println!("[test did not panic]");
     exit_qemu(QemuExitCode::Failed);
-    yos::hlt_loop();
+    kernel::hlt_loop();
 }
 
 fn should_fail() {

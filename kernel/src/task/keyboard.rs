@@ -1,5 +1,6 @@
 use crate::print;
 use crate::println;
+use crate::serial_print;
 use conquer_once::spin::OnceCell;
 use core::{
     pin::Pin,
@@ -19,7 +20,6 @@ pub async fn print_keypresses() {
         layouts::Us104Key,
         HandleControl::Ignore,
     );
-
     while let Some(scancode) = scancodes.next().await {
         if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
             if let Some(key) = keyboard.process_keyevent(key_event) {

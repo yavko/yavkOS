@@ -13,3 +13,5 @@ for WASM execution, the whole purpose of this kernel.
 ## Actual work
 I found a comment under a `blog-os` post describing a `Spawner` for spawning
 tasks, instead of storing them in the executor, I think ill try implementing that.
+
+## That was it, I gave up, too many problems, this will continue in 3 days
