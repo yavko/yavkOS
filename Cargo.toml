@@ -1,41 +1,21 @@
 [package]
-name = "yos"
+name = "yos"         # or any other name
 version = "0.1.0"
 edition = "2021"
 
-[package.metadata.bootimage]
-test-args = ["-device", "isa-debug-exit,iobase=0xf4,iosize=0x04", "-serial", "stdio", "-display", "none"]
-test-success-exit-code = 33
-test-timeout = 300
-
-
-[[test]]
-name = "should_panic"
-harness = false
-
-[[test]]
-name = "stack_overflow"
-harness = false
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[build-dependencies]
+bootloader = "0.11"
+kernel = { path = "kernel", artifact = "bin", target = "x86_64-unknown-none" }
 
 [dependencies]
-bootloader = { version = "0.9.23", features = ["map_physical_memory"]}
-volatile = "0.2.7"
-lazy_static = { version = "1.4", features = ["spin_no_std"] }
-spin = "0.5.2"
-x86_64 = "0.14.10"
-uart_16550 = "0.2.18"
-pic8259 = "0.10.3"
-pc-keyboard = "0.5.1"
-linked_list_allocator = { version = "0.10.5", optional = true }
-good_memory_allocator = { version = "0.1.7", optional = true }
-crossbeam-queue = { version = "0.3.8", default-features = false, features = ["alloc"] }
-conquer-once = { version = "0.3.2", default-features = false }
-futures-util = { version = "0.3.27", default-features = false, features = ["alloc"] }
+# used for UEFI booting in QEMU
+#ovmf-prebuilt = "0.1.0-alpha.1"
+
+[workspace]
+members = ["kernel"]
 
 [features]
 default = [ "alloc-galloc" ]
-alloc-lla = ["dep:linked_list_allocator"]
-alloc-bump = []
-alloc-galloc = [ "dep:good_memory_allocator" ]
+alloc-lla = ["kernel/alloc-lla"]
+alloc-bump = [ "kernel/alloc-bump" ]
+alloc-galloc = [ "kernel/alloc-galloc" ]
